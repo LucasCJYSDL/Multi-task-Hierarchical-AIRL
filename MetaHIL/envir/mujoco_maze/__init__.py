@@ -26,7 +26,7 @@ for maze_id in TaskRegistry.keys():
                     maze_size_scaling=point_scale,
                     inner_reward_scaling=task_cls.INNER_REWARD_SCALING
                 ),
-                max_episode_steps=1000 # important parameter
+                max_episode_steps=500 # important parameter
             )
 
         ant_scale = task_cls.MAZE_SIZE_SCALING.ant
@@ -41,7 +41,7 @@ for maze_id in TaskRegistry.keys():
                     maze_size_scaling=ant_scale,
                     inner_reward_scaling=task_cls.INNER_REWARD_SCALING
                 ),
-                max_episode_steps=1000
+                max_episode_steps=500
             )
 
 

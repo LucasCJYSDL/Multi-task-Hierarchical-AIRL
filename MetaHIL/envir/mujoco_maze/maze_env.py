@@ -68,6 +68,7 @@ class MazeEnv(gym.Env):
             self._collision = None
 
         # Let's create MuJoCo XML
+        self.model_cls_file = model_cls.FILE
         xml_path = os.path.join(MODEL_DIR, model_cls.FILE) # based on the agent.xml
         print("XML_path: ", xml_path)
         tree = ET.parse(xml_path)
@@ -188,7 +189,7 @@ class MazeEnv(gym.Env):
         obs = np.concatenate([wrapped_obs[:3]] + additional_obs + [wrapped_obs[3:]])
         obs_ext = np.concatenate([obs, *view, np.array([self.t * 0.001])])
         if self.is_expert:
-            obs_ext = np.concatenate([obs_ext, self.goal])
+            obs_ext = np.concatenate([obs_ext, self._task.get_cur_subgoal()])
         else:
             obs_ext = np.concatenate([obs_ext, self.context])
         return obs_ext
@@ -222,7 +223,12 @@ class MazeEnv(gym.Env):
         goal_x = range * np.cos(theta)
         goal_y = range * np.sin(theta)
         self.goal = np.array([goal_x, goal_y])
+        self.sub_goal_list = [np.array([goal_x/2., 0]), np.array([goal_x/2., goal_y/2.]),
+                              np.array([goal_x, goal_y/2.]), np.array([goal_x, goal_y])]
+        # print("1: ", self.sub_goal_list)
+        # self.sub_goal_list = [np.array([goal_x / 2., goal_y / 2.]), np.array([goal_x, goal_y])]
         self._task.set_goal(self.goal)
+        self._task.set_subgoal_list(self.sub_goal_list)
 
     def reset(self) -> np.ndarray:
         self.t = 0
@@ -307,6 +313,9 @@ class MazeEnv(gym.Env):
         inner_reward = self._inner_reward_scaling * inner_reward  # rwd from the agent
         outer_reward = self._task.reward(next_obs)  # rwd from the outer task
         done = self._task.termination(next_obs)
+        if 'ant' in self.model_cls_file:
+            print(next_obs[2])
+            done = done or (next_obs[2] <= 0.3) # if the ant flips over, we will terminate the episode
 
         info["position"] = self.wrapped_env.get_xy()
         return next_obs, inner_reward + outer_reward, done, info

@@ -54,7 +54,7 @@ class MazeGoal:
 
 class MazeTask(ABC):
     PENALTY: Optional[float] = None
-    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=8.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=4.0, point=8.0)
     INNER_REWARD_SCALING: float = 0.0 # no reward from the mujoco setting
 
     def __init__(self, scale: float) -> None:
@@ -98,6 +98,10 @@ class MazeTask(ABC):
         return act
 
     @abstractmethod
+    def set_subgoal_list(self, subgoal_list) -> None:
+        pass
+
+    @abstractmethod
     def reward(self, obs: np.ndarray) -> float:
         pass
 
@@ -108,14 +112,16 @@ class MazeTask(ABC):
 
 
 class GoalRewardCell(MazeTask):
-    PENALTY: float = -0.0001
-    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=8.0)
+    PENALTY: float = 0.0
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=4.0, point=8.0)
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
         self.goals = [MazeGoal(np.array([8.0 * scale, -8.0 * scale]))]
 
+
     def reward(self, obs: np.ndarray) -> float:
+
         for goal in self.goals:
             if goal.neighbor(obs):
                 return goal.reward_scale
@@ -144,6 +150,40 @@ class GoalRewardCell(MazeTask):
         ]
 
 
+
+class MultiGoalRewardCell(GoalRewardCell):
+
+    def __init__(self, scale: float) -> None:
+        super().__init__(scale)
+        self.goals = [MazeGoal(np.array([8.0 * scale, -8.0 * scale]))]
+        self.subgoal_list = None
+        self.subgoal_idx = 0
+        self.dist_threshold = 2.0 # important parameter
+
+    def set_subgoal_list(self, subgoal_list) -> None:
+        self.subgoal_list = subgoal_list
+        self.subgoal_idx = 0
+
+    def get_cur_subgoal(self):
+        return self.subgoal_list[self.subgoal_idx]
+
+    def reward(self, obs: np.ndarray) -> float:
+        xy = obs[:2]
+        goal_xy = self.get_cur_subgoal()
+        dist = np.linalg.norm(xy-goal_xy)
+        subgoal_bonus = 0.0
+        if dist <= self.dist_threshold:
+            print("Reach Goal {}!".format(self.subgoal_idx))
+            dist = self.dist_threshold
+            self.subgoal_idx += 1
+            subgoal_bonus = 100.0 # important parameter
+        rwd = 1.0 / dist + subgoal_bonus
+        ori_rwd = super(MultiGoalRewardCell, self).reward(obs)
+
+        return rwd + ori_rwd * 100.0 # important parameter
+
+
+
 class DistRewardCell(GoalRewardCell):
 
     def __init__(self, scale: float) -> None:
@@ -155,9 +195,10 @@ class DistRewardCell(GoalRewardCell):
         return -self.goals[0].euc_dist(obs) / self.scale / 10.0 + ori_rwd * 100.0 # important parameter
 
 
+
 class TaskRegistry:
     REGISTRY: Dict[str, List[Type[MazeTask]]] = {
-        "Cell": [DistRewardCell]
+        "Cell": [DistRewardCell, MultiGoalRewardCell]
     }
 
     @staticmethod

@@ -7,7 +7,7 @@ try:
 except ImportError:
     print("Warning: pybullet not installed, bullet environments will be unavailable")
 import gym
-from envir import mujoco_maze
+from envir import mujoco_maze, mujoco_manipulation
 
 
 class MujocoEnv(object):
@@ -52,13 +52,16 @@ class MujocoEnv(object):
             self.env.render()
         return s, reward, terminate
 
-    def state_action_size(self):
+    def state_action_size(self, is_expert=False):
         if self.env is not None:
-            s_dim = self.env.observation_space.shape[0]
+            s = self.reset(self.sample_context(), is_expert=is_expert)
+            s_dim = s.shape[0]
             a_dim = self.env.action_space.shape[0]
         else:
             env = gym.make(self.task_name)
-            s_dim = env.observation_space.shape[0]
+            env.apply_context(env.sample_context(), is_expert=is_expert)
+            s = env.reset()
+            s_dim = s.shape[0]
             a_dim = env.action_space.shape[0]
             env.close()
         return s_dim, a_dim

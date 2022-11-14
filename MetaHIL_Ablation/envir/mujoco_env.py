@@ -7,7 +7,7 @@ try:
 except ImportError:
     print("Warning: pybullet not installed, bullet environments will be unavailable")
 import gym
-from envir import mujoco_maze
+from envir import mujoco_maze, mujoco_manipulation
 
 
 class MujocoEnv(object):
@@ -52,55 +52,40 @@ class MujocoEnv(object):
             self.env.render()
         return s, reward, terminate
 
-    def state_action_size(self):
+    def state_action_size(self, is_expert=False):
         if self.env is not None:
-            s_dim = self.env.observation_space.shape[0]
+            s = self.reset(self.sample_context(), is_expert=is_expert)
+            s_dim = s.shape[0]
             a_dim = self.env.action_space.shape[0]
         else:
             env = gym.make(self.task_name)
-            s_dim = env.observation_space.shape[0]
+            env.apply_context(env.sample_context(), is_expert=is_expert)
+            s = env.reset()
+            s_dim = s.shape[0]
             a_dim = env.action_space.shape[0]
             env.close()
         return s_dim, a_dim
 
 
-def preprocess(data_set):
-    # we need to replace the true task info (e.g., goal location) in the expert data with the context
-    # since the learned policy will not be provided the true task info
-    train_demos = []
-    for task_idx in data_set:
-        temp_context = torch.tensor(data_set[task_idx]['context'], dtype=torch.float32).unsqueeze(0)
-        context_dim = len(data_set[task_idx]['context'])
-        temp_traj_list = data_set[task_idx]['demos']
-        for traj_idx in range(len(temp_traj_list)):
-            s, a, r = temp_traj_list[traj_idx]
-            s = s[:, :-context_dim] # eliminate the true task info # TODO: only do this elimination
-            context_sup = temp_context.repeat(s.shape[0], 1)
-            s = torch.cat([s, context_sup], dim=1)
-            train_demos.append((s, a, r))
-
-    return train_demos
-
 def get_demo(train_path, test_path, n_traj, task_specific=False):
     print(f"Demo Loaded from {train_path} and {test_path}")
     train_set = torch.load(train_path)
     test_set = torch.load(test_path)
-
-    test_contexts = []
-    for task_idx in test_set:
-        test_contexts.append(test_set[task_idx]['context'])
-
     # the structure of the demonstration data for all the algorithms are kept the same for fairness
-    if not task_specific:
+    if not task_specific: # for algorithms other than MAML-IL
         train_demos = []
         for task_idx in train_set: # no need to shuffle the keys of the train set
             train_demos.extend(train_set[task_idx]['demos'])
             if len(train_demos) >= n_traj:
                 break
         random.shuffle(train_demos) # the sort of the trajectories should not be correlated with the task variable
+        test_contexs = []
+        for task_idx in test_set:
+            test_contexs.append(test_set[task_idx]['context'])
 
-        return train_demos, test_contexts
+        return train_demos, test_contexs
 
+    # for MAML-IL
     train_demos = {}
     cur_traj = 0
     for task_idx in train_set:
@@ -109,10 +94,7 @@ def get_demo(train_path, test_path, n_traj, task_specific=False):
         if cur_traj >= n_traj:
             break
 
-    train_demos = preprocess(train_demos)
-    random.shuffle(train_demos)
-    # print("1: ", train_demos)
-    return train_demos, test_contexts
+    return train_demos, test_set
 
 
 def collect_demo(config, n_task=1000, demo_per_task=10, data_type='train',
