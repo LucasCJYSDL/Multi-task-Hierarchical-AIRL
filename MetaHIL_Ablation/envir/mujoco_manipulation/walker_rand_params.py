@@ -8,11 +8,11 @@ class WalkerRandParamsEnv(MujocoEnv, utils.EzPickle):
     def __init__(self):
         # achieve the target velocity
         self.goal_vel = np.array([4.0])  # TODO: important parameter
-        self.sub_goal_vel_list = [np.array([2.0]), np.array([0.0]), np.array([4.0])]  # TODO: important parameter
+        self.sub_goal_vel_list = [np.array([3.0]), np.array([0.0]), np.array([6.0])]  # TODO: important parameter
         self.sub_goal_vel_idx = 0
         # parameter-related context
         self.rand_params = 'body_mass'  # ['body_mass', 'dof_damping'], [8, 9]
-        self._context_dim = 2  # [<=8, <=9] # TODO: the most important parameter!!!
+        self._context_dim = 4  # [<=8, <=9] # TODO: the most important parameter!!!
         self._context_limit = 3.0  # TODO: important parameter
         self.context = np.zeros(self._context_dim, dtype=np.float32)  # temporary
         self.is_expert = False  # temporary
@@ -110,28 +110,35 @@ class WalkerRandParamsEnv(MujocoEnv, utils.EzPickle):
 
         goal_bonus = 0.0
         vel_diff = abs(forward_vel - cur_sub_goal_vel)
-        if vel_diff <= 1e-3:
+        done = False
+        if vel_diff <= 0.1:
             print("Achieve Target Velocity {}!".format(self.sub_goal_vel_idx))
+            if self.sub_goal_vel_idx == len(self.sub_goal_vel_list) - 1:
+                done = True
+                goal_bonus += 100.0
+                print("Great Success!!!")
             self.sub_goal_vel_idx += 1
-            goal_bonus = 100.0
+            if self.sub_goal_vel_idx > len(self.sub_goal_vel_list) - 1:
+                self.sub_goal_vel_idx = len(self.sub_goal_vel_list) - 1
+            goal_bonus += 100.0
 
         forward_reward = -1.0 * vel_diff
         ctrl_cost = 0.05 * np.sum(np.square(a))
-        reward = forward_reward - ctrl_cost + goal_bonus + 5.0 # 5.0 is the survive bonus for each time step
+        reward = 0.1 * (forward_reward - ctrl_cost) + goal_bonus + 0.5 # 5.0 is the survive bonus for each time step
 
         obs = self._get_obs()
 
-        final_vel_diff = abs(forward_vel - self.goal_vel[0])
-        if final_vel_diff > 1e-3:
-            done = False
-        else:
-            done = True
-            print("Great Success!!!")
+        # final_vel_diff = abs(forward_vel - self.goal_vel[0])
+        # if final_vel_diff > 1e-3:
+        #     done = False
+        # else:
+        #     done = True
+        #     print("Great Success!!!")
 
         done = done or done_pre
 
         info = dict(reward_forward=forward_reward, reward_ctrl=-ctrl_cost, goal_bouns=goal_bonus, done_pre=done_pre)
-
+        # print(info)
         return obs, reward, done, info
 
 

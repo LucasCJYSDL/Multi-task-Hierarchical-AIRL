@@ -35,6 +35,7 @@ class MazeEnv(gym.Env):
         self._task = maze_task(maze_size_scaling, **task_kwargs)
         self._context_dim = 2 # important parameter: (theta, range)
         self._context_limit = 2.0
+        self.sub_goal_num = 4
         self.context = self._task.goals[0].pos.copy() # temporary
         self.goal = self._task.goals[0].pos.copy() # temporary
         self.is_expert = False
@@ -188,10 +189,18 @@ class MazeEnv(gym.Env):
 
         obs = np.concatenate([wrapped_obs[:3]] + additional_obs + [wrapped_obs[3:]])
         obs_ext = np.concatenate([obs, *view, np.array([self.t * 0.001])])
+
+        if 'ant' in self.model_cls_file:
+            goal_idx_onehot = np.zeros(self.sub_goal_num, dtype=np.float32)
+            cur_goal_idx = self._task.get_cur_subgoal_idx()
+            goal_idx_onehot[cur_goal_idx] = 1.0
+            obs_ext = np.concatenate([obs_ext, goal_idx_onehot])
+
         if self.is_expert:
             obs_ext = np.concatenate([obs_ext, self._task.get_cur_subgoal()])
         else:
             obs_ext = np.concatenate([obs_ext, self.context])
+
         return obs_ext
 
     def sample_context(self) -> np.ndarray: # truncated standard normal distribution
@@ -223,10 +232,16 @@ class MazeEnv(gym.Env):
         goal_x = range * np.cos(theta)
         goal_y = range * np.sin(theta)
         self.goal = np.array([goal_x, goal_y])
-        self.sub_goal_list = [np.array([goal_x/2., 0]), np.array([goal_x/2., goal_y/2.]),
-                              np.array([goal_x, goal_y/2.]), np.array([goal_x, goal_y])]
+        # self.sub_goal_list = [np.array([goal_x/2., 0]), np.array([goal_x/2., goal_y/2.]),
+        #                       np.array([goal_x, goal_y/2.]), np.array([goal_x, goal_y])]
         # print("1: ", self.sub_goal_list)
-        # self.sub_goal_list = [np.array([goal_x / 2., goal_y / 2.]), np.array([goal_x, goal_y])]
+        if abs(goal_x) > abs(goal_y):
+            self.sub_goal_list = [np.array([goal_x/3., 0.0]), np.array([goal_x*2./3., 0.0]),
+                                  np.array([goal_x, 0.0]), np.array([goal_x, goal_y])]
+        else:
+            self.sub_goal_list = [np.array([0.0, goal_y/3.]), np.array([0.0, goal_y*2./3.]),
+                                  np.array([0.0, goal_y]), np.array([goal_x, goal_y])]
+        assert len(self.sub_goal_list) == self.sub_goal_num
         self._task.set_goal(self.goal)
         self._task.set_subgoal_list(self.sub_goal_list)
 
@@ -311,13 +326,14 @@ class MazeEnv(gym.Env):
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()
         inner_reward = self._inner_reward_scaling * inner_reward  # rwd from the agent
-        outer_reward = self._task.reward(next_obs)  # rwd from the outer task
-        done = self._task.termination(next_obs)
+        outer_reward, done = self._task.reward(next_obs, action)  # rwd from the outer task
+        # done = self._task.termination(next_obs)
         if 'ant' in self.model_cls_file:
-            print(next_obs[2])
+            # print(next_obs[2])
             done = done or (next_obs[2] <= 0.3) # if the ant flips over, we will terminate the episode
 
         info["position"] = self.wrapped_env.get_xy()
+        # print("obs: ", next_obs)
         return next_obs, inner_reward + outer_reward, done, info
 
     def close(self) -> None:

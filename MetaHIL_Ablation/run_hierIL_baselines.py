@@ -80,6 +80,8 @@ def learn(config: Config, msg="default"):
     env = Env(env_name)
     dim_s, dim_a = env.state_action_size()
     dim_cnt, cnt_limit = env.get_context_info()
+
+
     if not config.context_avail:
         dim_s = dim_s - dim_cnt
     print("The dimension info of the environment: name:{}, dim_s:{}, dim_a:{}, context_dim:{}, context_limit:{}.".format(
@@ -153,7 +155,7 @@ if __name__ == "__main__":
 
     arg = ARGConfig()
     arg.add_arg("env_type", "mujoco", "Environment type")
-    arg.add_arg("env_name", "PointCell-v0", "Environment name")
+    arg.add_arg("env_name", "KitchenMetaEnv-v0", "Environment name") # AntCell-v1
     arg.add_arg("algo", "hier_airl", "which algorithm to use, can be [gail, option_gail, DI_gail, hier_airl]")
     arg.add_arg("device", "cuda:0", "Computing device")
     arg.add_arg("tag", "default", "Experiment tag")
@@ -168,10 +170,14 @@ if __name__ == "__main__":
         raise NotImplementedError
 
     config.update(arg)
-    if config.env_name.startswith("Humanoid"):
-        config.hidden_policy = (512, 512)
-        config.hidden_critic = (512, 512)
-        print(f"Training Humanoid.* envs with larger policy network size :{config.hidden_policy}")
+    if config.env_name.startswith("Ant") or config.env_name.startswith("Walker"):
+        config.hidden_policy = (128, 128)
+        config.hidden_critic = (128, 128)
+
+    elif config.env_name.startswith("Kitchen"):
+        # config.n_sample = 512
+        config.hidden_policy = (256, 256)
+        config.hidden_critic = (256, 256)
 
     ## set up the corresponding algorithm
     if config.algo == 'gail':

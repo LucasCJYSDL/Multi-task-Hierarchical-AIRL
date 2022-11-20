@@ -107,7 +107,7 @@ class _SamplerSS(_SamplerCommon):
                 rets.append(traj)
                 counter -= traj[0].size(0)
         else:
-            assert self.task_list is not None
+            # assert self.task_list is not None
             while counter < 0: # only used for testing, so don't need repeated sampling
                 traj = self.loop_func(self.env, self.policy, self.is_expert, fixed=fixed, task_list=self.task_list, contain_context=self.contain_context)
                 rets.append(traj)

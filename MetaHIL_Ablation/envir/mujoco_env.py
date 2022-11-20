@@ -7,7 +7,7 @@ try:
 except ImportError:
     print("Warning: pybullet not installed, bullet environments will be unavailable")
 import gym
-from envir import mujoco_maze, mujoco_manipulation
+from envir import mujoco_maze, mujoco_manipulation, d4rl_env
 
 
 class MujocoEnv(object):
@@ -67,25 +67,43 @@ class MujocoEnv(object):
         return s_dim, a_dim
 
 
+def preprocess(data_set):
+    # we need to replace the true task info (e.g., goal location) in the expert data with the context
+    # since the learned policy will not be provided the true task info
+    train_demos = []
+    for task_idx in data_set:
+        temp_context = torch.tensor(data_set[task_idx]['context'], dtype=torch.float32).unsqueeze(0)
+        context_dim = len(data_set[task_idx]['context'])
+        temp_traj_list = data_set[task_idx]['demos']
+        for traj_idx in range(len(temp_traj_list)):
+            s, a, r = temp_traj_list[traj_idx]
+            s = s[:, :-context_dim] # eliminate the true task info # TODO: only do this elimination
+            context_sup = temp_context.repeat(s.shape[0], 1)
+            s = torch.cat([s, context_sup], dim=1)
+            train_demos.append((s, a, r))
+
+    return train_demos
+
 def get_demo(train_path, test_path, n_traj, task_specific=False):
     print(f"Demo Loaded from {train_path} and {test_path}")
     train_set = torch.load(train_path)
     test_set = torch.load(test_path)
+
+    test_contexts = []
+    for task_idx in test_set:
+        test_contexts.append(test_set[task_idx]['context'])
+
     # the structure of the demonstration data for all the algorithms are kept the same for fairness
-    if not task_specific: # for algorithms other than MAML-IL
+    if not task_specific:
         train_demos = []
         for task_idx in train_set: # no need to shuffle the keys of the train set
             train_demos.extend(train_set[task_idx]['demos'])
             if len(train_demos) >= n_traj:
                 break
         random.shuffle(train_demos) # the sort of the trajectories should not be correlated with the task variable
-        test_contexs = []
-        for task_idx in test_set:
-            test_contexs.append(test_set[task_idx]['context'])
 
-        return train_demos, test_contexs
+        return train_demos, test_contexts
 
-    # for MAML-IL
     train_demos = {}
     cur_traj = 0
     for task_idx in train_set:
@@ -94,7 +112,10 @@ def get_demo(train_path, test_path, n_traj, task_specific=False):
         if cur_traj >= n_traj:
             break
 
-    return train_demos, test_set
+    train_demos = preprocess(train_demos)
+    random.shuffle(train_demos)
+    # print("1: ", train_demos)
+    return train_demos, test_contexts
 
 
 def collect_demo(config, n_task=1000, demo_per_task=10, data_type='train',
@@ -122,7 +143,7 @@ def collect_demo(config, n_task=1000, demo_per_task=10, data_type='train',
         context = env.sample_context()
         demo_set[task_idx] = {'context': context}
         trajs = []
-        for traj_id in range(demo_per_task):
+        while len(trajs) < demo_per_task:
             with torch.no_grad():
                 s_array = []
                 a_array = []
@@ -144,9 +165,11 @@ def collect_demo(config, n_task=1000, demo_per_task=10, data_type='train',
                 r_array = torch.as_tensor(r_array, dtype=torch.float32).unsqueeze(dim=1)
 
                 print(f"R-Sum={r_array.sum()}, L={r_array.size(0)}")
-                trajs.append((s_array, a_array, r_array))
+                if r_array.sum().item() > 1200: # or 300
+                    print("Keep it!")
+                    trajs.append((s_array, a_array, r_array))
 
-            demo_set[task_idx]['demos'] = trajs
+        demo_set[task_idx]['demos'] = trajs
 
     torch.save(demo_set, path)
 
@@ -154,6 +177,7 @@ def get_demo_stat(path=""):
     if os.path.isfile(path):
         print(f"Demo Loaded from {path}")
         samples = torch.load(path) # TODO
+        # print(samples)
         aver_r = 0.0
         n_traj = 0
         n_tran = 0
@@ -172,7 +196,7 @@ def get_demo_stat(path=""):
 if __name__ == '__main__':
 
     # collect_demo(config=None, n_demo=10000, is_manual=True, env_name='PointCell-v0')
-
+    #
     # import torch.multiprocessing as multiprocessing
     # from utils.config import Config, ARGConfig
     # from default_config import mujoco_config
@@ -180,8 +204,8 @@ if __name__ == '__main__':
     # multiprocessing.set_start_method('spawn')
     #
     # arg = ARGConfig()
-    # arg.add_arg("env_type", "mujoco", "Environment type, can be [mujoco]")
-    # arg.add_arg("env_name", "PointCell-v0", "Environment name")
+    # arg.add_arg("env_type", "mujoco", "Environment type, can be [mujoco, ...]")
+    # arg.add_arg("env_name", "AntCell-v1", "Environment name")
     # arg.add_arg("algo", "ppo", "Environment type, can be [ppo, option_ppo]")
     # arg.add_arg("device", "cuda:0", "Computing device")
     # arg.add_arg("tag", "default", "Experiment tag")
@@ -190,10 +214,10 @@ if __name__ == '__main__':
     #
     # config = mujoco_config
     # config.update(arg)
-    # if config.env_name.startswith("Humanoid"):
-    #     config.hidden_policy = (512, 512)
-    #     config.hidden_critic = (512, 512)
-    #     print(f"Training Humanoid.* envs with larger policy network size :{config.hidden_policy}")
+    # if config.env_name.startswith("Ant") or config.env_name.startswith("Walker"):
+    #     config.hidden_policy = (128, 128)
+    #     config.hidden_critic = (128, 128)
+    #     print(f"Training this env with larger policy network size :{config.hidden_policy}")
     #
     # print(config.algo)
     # config.use_option = True
@@ -204,13 +228,13 @@ if __name__ == '__main__':
     # if config.algo == 'ppo':
     #     config.use_option = False
     #     config.train_option = False
+    #
+    # collect_demo(config, n_task=100, demo_per_task=10, data_type='train', expert_path='./exp_model/AntCell/25299.torch')
+    # collect_demo(config, n_task=50, demo_per_task=10, data_type='test', expert_path='./exp_model/AntCell/25299.torch')
 
-    # collect_demo(config, n_task=500, demo_per_task=10, data_type='train', expert_path='./exp_model/PointCell/449.torch')
-    # collect_demo(config, n_task=100, demo_per_task=10, data_type='test', expert_path='./exp_model/PointCell/449.torch')
+    get_demo_stat('AntCell-v1_sample_train.torch')
+    get_demo_stat('AntCell-v1_sample_test.torch')
 
-    # get_demo_stat('PointCell-v0_sample_train.torch')
-    # get_demo_stat('PointCell-v0_sample_test.torch')
-
-    train, test = get_demo('PointCell-v0_sample_train.torch', 'PointCell-v0_sample_test.torch', 10, task_specific=True)
-    print(train)
-    print(len(test))
+    # train, test = get_demo('PointCell-v0_sample_train.torch', 'PointCell-v0_sample_test.torch', 10, task_specific=True)
+    # print(train)
+    # print(len(test))

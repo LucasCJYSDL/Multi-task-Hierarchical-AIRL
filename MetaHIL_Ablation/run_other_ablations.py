@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
     arg = ARGConfig()
     arg.add_arg("env_type", "mujoco", "Environment type, can be [mujoco, ...]")
-    arg.add_arg("env_name", "PointCell-v0", "Environment name")
+    arg.add_arg("env_name", "KitchenMetaEnv-v0", "Environment name")
     arg.add_arg("algo", "meta_hier_gail", "which algorithm to use, can be [meta_hier_gail, meta_hier_airl_no_cnt,...]")
     arg.add_arg("device", "cuda:0", "Computing device")
     arg.add_arg("tag", "default", "Experiment tag")
@@ -131,10 +131,14 @@ if __name__ == '__main__':
         raise NotImplementedError
 
     config.update(arg)
-    if config.env_name.startswith("Humanoid"):
-        config.hidden_policy = (512, 512)
-        config.hidden_critic = (512, 512)
-        print(f"Training Humanoid.* envs with larger policy network size :{config.hidden_policy}")
+    if config.env_name.startswith("Ant") or config.env_name.startswith("Walker"):
+        config.hidden_policy = (128, 128)
+        config.hidden_critic = (128, 128)
+
+    elif config.env_name.startswith("Kitchen"):
+        # config.n_sample = 512
+        config.hidden_policy = (256, 256)
+        config.hidden_critic = (256, 256)
 
     if 'airl' in config.algo:
         config.is_airl = True

@@ -10,7 +10,7 @@ from utils.config import ARGConfig, Config
 from default_config import mujoco_config
 from model.maml_learner import MAMLLearner
 
-def preprocess(data_set, context_dim):
+def preprocess(data_set, context_dim, env_name):
     # we need to replace the true task info (e.g., goal location) in the expert data with the context
     # since the learned policy will not be provided the true task info
     for task_idx in data_set:
@@ -53,8 +53,8 @@ def learn(config: Config, msg="default"):
 
     # the demonstration does contain task labels!!!
     train_set, test_set = get_demo(train_set_name, test_set_name, n_traj=n_traj, task_specific=True)
-    preprocess(train_set, dim_cnt)
-    preprocess(test_set, dim_cnt)
+    preprocess(train_set, dim_cnt, env_name)
+    preprocess(test_set, dim_cnt, env_name)
     train_task_list = list(train_set.keys())
     test_task_list = list(test_set.keys())
     # the evaluation in only on the tasks contained in the test set, which is controlled to be the same as the other algorithms
@@ -115,10 +115,14 @@ if __name__ == '__main__':
         raise NotImplementedError
 
     config.update(arg)
-    if config.env_name.startswith("Humanoid"):
-        config.hidden_policy = (512, 512)
-        config.hidden_critic = (512, 512)
-        print(f"Training Humanoid.* envs with larger policy network size :{config.hidden_policy}")
+    if config.env_name.startswith("Ant") or config.env_name.startswith("Walker"):
+        config.hidden_policy = (128, 128)
+        config.hidden_critic = (128, 128)
+
+    elif config.env_name.startswith("Kitchen"):
+        # config.n_sample = 512
+        config.hidden_policy = (256, 256)
+        config.hidden_critic = (256, 256)
 
     print(f">>>> Training {config.algo} using {config.env_name} environment on {config.device}")
 

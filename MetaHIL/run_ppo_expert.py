@@ -28,14 +28,12 @@ def learn(config: Config, msg="default"):
 
     use_option = config.use_option
     env_name = config.env_name
-    alg_name = config.algo
     n_sample = config.n_sample
-    n_thread = config.n_thread
     n_epoch = config.n_epoch
     seed = config.seed
     set_seed(seed)
 
-    log_dir, save_dir, sample_name, pretrain_name = get_dirs(seed, alg_name, env_type, env_name, msg)
+    log_dir, save_dir, train_set_name, test_set_name, _ = get_dirs(seed, config.algo, env_type, env_name, msg)
     with open(os.path.join(save_dir, "config.log"), 'w') as f:
         f.write(str(config))
     logger = Logger(log_dir)
@@ -53,7 +51,7 @@ def learn(config: Config, msg="default"):
         policy = Policy(config, dim_s=dim_s, dim_a=dim_a)
         ppo = PPO(config, policy)
 
-    sampling_agent = Sampler(seed, env, policy, is_expert=True, n_thread=n_thread)
+    sampling_agent = Sampler(seed, env, policy, is_expert=True)
 
     for i in range(n_epoch):
         sample_sxar, sample_r = sample_batch(policy, sampling_agent, n_sample)
@@ -74,7 +72,8 @@ if __name__ == "__main__":
 
     arg = ARGConfig()
     arg.add_arg("env_type", "mujoco", "Environment type, can be [mujoco, ...]")
-    arg.add_arg("env_name", "PointCell-v0", "Environment name")
+    # [PointCell-v1, AntCell-v1, HalfCheetahVel-v0, WalkerRandParams-v0, KitchenSeqEnv-v[0~6]]
+    arg.add_arg("env_name", "PointCell-v1", "Environment name")
     arg.add_arg("algo", "ppo", "Environment type, can be [ppo, option_ppo]")
     arg.add_arg("device", "cuda:0", "Computing device")
     arg.add_arg("tag", "default", "Experiment tag")
@@ -86,10 +85,17 @@ if __name__ == "__main__":
     config = mujoco_config
     config.update(arg)
 
-    if config.env_name.startswith("Humanoid"):
-        config.hidden_policy = (512, 512)
-        config.hidden_critic = (512, 512)
-        print(f"Training Humanoid.* envs with larger policy network size :{config.hidden_policy}")
+    if config.env_name.startswith("Ant") or config.env_name.startswith("Walker"):
+        config.hidden_policy = (128, 128)
+        config.hidden_critic = (128, 128)
+
+    elif config.env_name.startswith("Kitchen"):
+        # config.n_sample = 512
+        config.hidden_policy = (256, 256)
+        config.hidden_critic = (256, 256)
+
+    print(f"Training this env with larger policy network size :{config.hidden_policy}")
+
 
     config.use_option = True
     config.use_c_in_discriminator = False # in fact, there are no discriminators

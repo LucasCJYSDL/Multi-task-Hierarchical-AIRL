@@ -34,7 +34,7 @@ class MazeGoal:
         pos: np.ndarray,
         reward_scale: float = 1.0,
         rgb: Rgb = RED,
-        threshold: float = 3.0, # important parameter
+        threshold: float = 1.5, # important parameter
         custom_size: Optional[float] = None,
     ) -> None:
         assert 0.0 <= reward_scale <= 1.0
@@ -54,7 +54,7 @@ class MazeGoal:
 
 class MazeTask(ABC):
     PENALTY: Optional[float] = None
-    MAZE_SIZE_SCALING: Scaling = Scaling(ant=4.0, point=8.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=8.0)
     INNER_REWARD_SCALING: float = 0.0 # no reward from the mujoco setting
 
     def __init__(self, scale: float) -> None:
@@ -113,7 +113,7 @@ class MazeTask(ABC):
 
 class GoalRewardCell(MazeTask):
     PENALTY: float = 0.0
-    MAZE_SIZE_SCALING: Scaling = Scaling(ant=4.0, point=8.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=8.0)
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
@@ -158,7 +158,7 @@ class MultiGoalRewardCell(GoalRewardCell):
         self.goals = [MazeGoal(np.array([8.0 * scale, -8.0 * scale]))]
         self.subgoal_list = None
         self.subgoal_idx = 0
-        self.dist_threshold = 2.0 # important parameter
+        self.dist_threshold = 1.5 # important parameter
 
     def set_subgoal_list(self, subgoal_list) -> None:
         self.subgoal_list = subgoal_list
@@ -167,20 +167,33 @@ class MultiGoalRewardCell(GoalRewardCell):
     def get_cur_subgoal(self):
         return self.subgoal_list[self.subgoal_idx]
 
-    def reward(self, obs: np.ndarray) -> float:
+    def get_cur_subgoal_idx(self):
+        return self.subgoal_idx
+
+    def reward(self, obs: np.ndarray, act: np.ndarray):
         xy = obs[:2]
         goal_xy = self.get_cur_subgoal()
         dist = np.linalg.norm(xy-goal_xy)
         subgoal_bonus = 0.0
+        done = False
         if dist <= self.dist_threshold:
-            print("Reach Goal {}!".format(self.subgoal_idx))
-            dist = self.dist_threshold
+            print("Reach Goal {}: {}!".format(self.subgoal_idx, goal_xy))
+            # dist = self.dist_threshold
+            if self.subgoal_idx == len(self.subgoal_list) - 1:
+                done = True
+                print("Great Success!")
+                subgoal_bonus += 1000.0
             self.subgoal_idx += 1
-            subgoal_bonus = 100.0 # important parameter
-        rwd = 1.0 / dist + subgoal_bonus
-        ori_rwd = super(MultiGoalRewardCell, self).reward(obs)
+            if self.subgoal_idx > len(self.subgoal_list) - 1:
+                self.subgoal_idx = len(self.subgoal_list) - 1
 
-        return rwd + ori_rwd * 100.0 # important parameter
+            subgoal_bonus += 100.0 # important parameter
+        ctrl_cost = 0.05 * np.sum(np.square(act))
+        rwd = 0.1 * (-dist - ctrl_cost) + subgoal_bonus + 1.0 # 0.5 is the survival bonus
+        # print("Here: ", -dist, -ctrl_cost, subgoal_bonus, rwd)
+        # ori_rwd = super(MultiGoalRewardCell, self).reward(obs)
+
+        return rwd, done # important parameter
 
 
 

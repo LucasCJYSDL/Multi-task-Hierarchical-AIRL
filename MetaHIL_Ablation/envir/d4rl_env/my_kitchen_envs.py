@@ -4,12 +4,13 @@ import random
 
 from d4rl.kitchen.adept_envs.utils.configurable import configurable
 from d4rl.kitchen.adept_envs.franka.kitchen_multitask_v0 import KitchenTaskRelaxV1
-from d4rl.offline_env import OfflineEnv
+# from d4rl.offline_env import OfflineEnv
 from .task_config import TASK_SET, OBS_ELEMENT_INDICES, OBS_ELEMENT_GOALS, BONUS_THRESH
 
 
 @configurable(pickleable=True)
-class MyKitchenBase(KitchenTaskRelaxV1, OfflineEnv):
+# class MyKitchenBase(KitchenTaskRelaxV1, OfflineEnv):
+class MyKitchenBase(KitchenTaskRelaxV1):
     # A string of element names. The robot's task is then to modify each of
     # these elements appropriately.
     TASK_ELEMENTS = []
@@ -19,14 +20,14 @@ class MyKitchenBase(KitchenTaskRelaxV1, OfflineEnv):
     def __init__(self, dataset_url=None, ref_max_score=None, ref_min_score=None, **kwargs):
         self.tasks_to_complete = self.TASK_ELEMENTS.copy()
         super(MyKitchenBase, self).__init__(**kwargs)
-        OfflineEnv.__init__(
-            self,
-            dataset_url=dataset_url,
-            ref_max_score=ref_max_score,
-            ref_min_score=ref_min_score) # TODO: get rid of this
+        # OfflineEnv.__init__(
+        #     self,
+        #     dataset_url=dataset_url,
+        #     ref_max_score=ref_max_score,
+        #     ref_min_score=ref_min_score) # TODO: get rid of this
 
     def _get_task_goal(self): # this is part of the obs, but only executed at the beginning of the episode, i.e., reset()
-
+        # no permutation exists in the task set list
         new_goal = np.zeros_like(self.goal)
         for element in self.TASK_ELEMENTS:
         # for element in self.tasks_to_complete:
@@ -38,7 +39,7 @@ class MyKitchenBase(KitchenTaskRelaxV1, OfflineEnv):
 
     def reset_model(self):
         self.tasks_to_complete = self.TASK_ELEMENTS.copy()
-        # print("3000: ", self.tasks_to_complete)
+        print("Task list for the current episode: ", self.tasks_to_complete)
         return super(MyKitchenBase, self).reset_model()
 
     def _get_reward_n_score(self, obs_dict):
@@ -52,10 +53,10 @@ class MyKitchenBase(KitchenTaskRelaxV1, OfflineEnv):
         element = self.tasks_to_complete[0] # the tasks in the list should be completed in sequence
         element_idx = OBS_ELEMENT_INDICES[element]
         distance = np.linalg.norm(next_obj_obs[..., element_idx - idx_offset] - next_goal[element_idx])
-        bonus += 1.0 / max(distance, BONUS_THRESH)
-        complete = distance < BONUS_THRESH
+        bonus += 1.0 / max(distance, BONUS_THRESH[element])
+        complete = distance < BONUS_THRESH[element]
         if complete:
-            bonus += 100.0 # important parameter
+            bonus += 1000.0 # important parameter
             print("Finish Task #{}!!!".format(len(self.TASK_ELEMENTS)-len(self.tasks_to_complete)))
             if self.REMOVE_TASKS_WHEN_COMPLETE:
                 self.tasks_to_complete = self.tasks_to_complete[1:]
@@ -63,7 +64,7 @@ class MyKitchenBase(KitchenTaskRelaxV1, OfflineEnv):
         reward_dict['bonus'] = bonus
         reward_dict['r_total'] = bonus # reward returned in step()
         score = bonus
-        # print("200: ", reward_dict)
+        # print("200: ", 1.0 / max(distance, BONUS_THRESH))
         return reward_dict, score
 
     def step(self, a, b=None):
@@ -73,6 +74,36 @@ class MyKitchenBase(KitchenTaskRelaxV1, OfflineEnv):
             if done:
                 print("Great Success!!!")
         return obs, reward, done, env_info
+
+    def seed(self, seed_idx: int=None):
+        super(MyKitchenBase, self).seed(seed_idx)
+        self.action_space.np_random.seed(seed_idx)
+        random.seed(seed_idx)
+        np.random.seed(seed_idx)
+
+    def sample_context(self): # do nothing, only to fit the template
+        return None
+
+    def apply_context(self, context_rv: np.ndarray, is_expert: bool): # do nothing, only to fit the template
+        pass
+
+
+class DemoParseEnv(MyKitchenBase):
+    TASK_ELEMENTS = ['bottom burner']  # temporary
+
+    def __init__(self):
+        super(DemoParseEnv, self).__init__()
+        self.name_dict = {
+            'kettle': 'kettle', 'bottom': 'bottom burner', 'top': 'top burner', 'slide': 'slide cabinet',
+            'hinge': 'hinge cabinet', 'microwave': 'microwave', 'switch': 'light switch'
+        }
+
+    def set_task_elements(self, demo_folder_name):
+        task_list = demo_folder_name.split('_')
+        temp_list = []
+        for st in task_list:
+            temp_list.append(self.name_dict[st])
+        self.TASK_ELEMENTS = temp_list
 
 
 class KitchenMultiTask(MyKitchenBase):
@@ -85,6 +116,11 @@ class KitchenMultiTask(MyKitchenBase):
         self._task_name_list = list(OBS_ELEMENT_INDICES.keys())
         self.context = np.array([0.0])  # temporary
         self.is_expert = False  # temporary
+
+        self.name_dict = {
+            'kettle': 'kettle', 'bottom': 'bottom burner', 'top': 'top burner', 'slide': 'slide cabinet',
+            'hinge': 'hinge cabinet', 'microwave': 'microwave', 'switch': 'light switch'
+        }
 
         super(KitchenMultiTask, self).__init__()
 
@@ -118,6 +154,12 @@ class KitchenMultiTask(MyKitchenBase):
         self.TASK_ELEMENTS = cur_task_elements # in reset, self.tasks_to_complete will be updated accordingly
         # print("2000: ", task_idx, cur_task, cur_task_elements, self.TASK_ELEMENTS)
 
+    def convert_to_context(self, task_idx):
+        # print(int(((task_idx * self._context_interval + 0.5 * self._context_interval - self._context_limit) - (-self._context_limit)) // self._context_interval))
+        return np.array([task_idx * self._context_interval + 0.5 * self._context_interval - self._context_limit])
+
+    def render(self, mode='human'): # to speed up
+        return []
 
     def _get_obs(self):
         obs = super(KitchenMultiTask, self)._get_obs()
@@ -126,11 +168,6 @@ class KitchenMultiTask(MyKitchenBase):
 
         return obs
 
-    def seed(self, seed_idx: int=None):
-        super(KitchenMultiTask, self).seed(seed_idx)
-        self.action_space.np_random.seed(seed_idx)
-        random.seed(seed_idx)
-        np.random.seed(seed_idx)
 
 
 class KitchenBottomBurner(MyKitchenBase):

@@ -71,7 +71,10 @@ def learn(config: Config, msg="default"):
     # the evaluation in only on the tasks contained in the test set, which is controlled to be the same as the MAML-IL
 
     il, ppo = make_il(config, dim_s=dim_s, dim_a=dim_a, dim_cnt=dim_cnt, cnt_limit=cnt_limit)
+    # demo_sa_array = tuple((s[:, :-dim_cnt].to(il.device), a.to(il.device)) for s, a, r in demo)
+
     demo_sa_array = tuple((s[:, :-dim_cnt].to(il.device), a.to(il.device)) for s, a, r in demo)
+    assert demo_sa_array[0][0].shape[1] == dim_s - dim_cnt
     # note that we have eliminated the context embedding in the expert demonstrations
 
     if config.algo == 'PEMIRL':
@@ -132,10 +135,14 @@ if __name__ == '__main__':
         raise NotImplementedError
 
     config.update(arg)
-    if config.env_name.startswith("Humanoid"):
-        config.hidden_policy = (512, 512)
-        config.hidden_critic = (512, 512)
-        print(f"Training Humanoid.* envs with larger policy network size :{config.hidden_policy}")
+    if config.env_name.startswith("Ant") or config.env_name.startswith("Walker"):
+        config.hidden_policy = (128, 128)
+        config.hidden_critic = (128, 128)
+
+    elif config.env_name.startswith("Kitchen"):
+        # config.n_sample = 512
+        config.hidden_policy = (256, 256)
+        config.hidden_critic = (256, 256)
 
     print(f">>>> Training {config.algo} using {config.env_name} environment on {config.device}")
 

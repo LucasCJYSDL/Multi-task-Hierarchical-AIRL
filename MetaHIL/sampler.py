@@ -128,7 +128,7 @@ class _SamplerSS(_SamplerCommon):
             if self.repeat_num > 0:
                 assert len(rets) % self.repeat_num == 0
         else:
-            assert self.task_list is not None
+            # assert self.task_list is not None
             while counter < 0: # only used for testing, so don't need repeated sampling
                 traj = self.loop_func(self.env, self.policy, self.is_expert, fixed=fixed, task_list=self.task_list)
                 rets.append(traj)

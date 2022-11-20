@@ -81,25 +81,33 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
         cur_sub_goal_vel = self.sub_goal_vel_list[self.sub_goal_vel_idx][0]
         goal_bonus = 0.0
         vel_diff = abs(forward_vel - cur_sub_goal_vel)
-        if vel_diff <= 1e-3:
+        done = False
+        if vel_diff <= 1e-1: # important parameter
             print("Achieve Target Velocity {}!".format(self.sub_goal_vel_idx))
+            if self.sub_goal_vel_idx == len(self.sub_goal_vel_list) - 1:
+                done = True
+                goal_bonus += 100.0
+                print("Great Success!!!")
             self.sub_goal_vel_idx += 1
-            goal_bonus = 100.0
+            if self.sub_goal_vel_idx > len(self.sub_goal_vel_list) - 1:
+                self.sub_goal_vel_idx = len(self.sub_goal_vel_list) - 1
+            goal_bonus += 100.0
 
         forward_reward = -1.0 * vel_diff
         ctrl_cost = 0.05 * np.sum(np.square(action))
 
         observation = self._get_obs()
-        reward = forward_reward - ctrl_cost + goal_bonus
+        reward = 0.1 * (forward_reward - ctrl_cost) + goal_bonus
 
-        final_vel_diff = abs(forward_vel - self.goal_vel[0])
-        if final_vel_diff > 1e-3:
-            done = False
-        else:
-            done = True
-            print("Great Success!!!")
+        # final_vel_diff = abs(forward_vel - self.goal_vel[0])
+        # if final_vel_diff > 1e-3:
+        #     done = False
+        # else:
+        #     done = True
+        #     print("Great Success!!!")
 
         info = dict(reward_forward=forward_reward, reward_ctrl=-ctrl_cost, goal_bouns=goal_bonus)
+        # print(info)
         return observation, reward, done, info
 
 

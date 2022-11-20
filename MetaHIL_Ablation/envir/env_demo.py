@@ -5,13 +5,13 @@ from envir import mujoco_maze, mujoco_manipulation, d4rl_env
 
 def main():
     # env_name = 'PointCell-v1'
-    env_name = 'AntCell-v1'
+    # env_name = 'AntCell-v1'
     # env_name = "HalfCheetahVel-v0"
     # env_name = "WalkerRandParams-v0"
     # env_name = 'KitchenSeqEnv-v0'
     # env_name = 'KitchenSeqEnv-v5'
     # env_name = 'KitchenSeqEnv-v6'
-    # env_name = 'KitchenMetaEnv-v0'
+    env_name = 'KitchenMetaEnv-v0'
     env = gym.make(env_name)
     for _ in range(5):
         cnt = env.sample_context()
