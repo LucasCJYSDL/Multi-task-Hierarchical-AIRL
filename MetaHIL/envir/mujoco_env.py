@@ -46,6 +46,9 @@ class MujocoEnv(object):
     def render(self):
         self.env.render()
 
+    def seed(self, seed_idx):
+        self.env.seed(seed_idx)
+
     def step(self, a):
         s, reward, terminate, info = self.env.step(a)
         if self.display:
@@ -71,13 +74,17 @@ def get_demo(train_path, test_path, n_traj, task_specific=False):
     print(f"Demo Loaded from {train_path} and {test_path}")
     train_set = torch.load(train_path)
     test_set = torch.load(test_path)
+
+    assert n_traj % len(train_set) == 0
+    traj_per_task = n_traj // len(train_set)
+
     # the structure of the demonstration data for all the algorithms are kept the same for fairness
     if not task_specific: # for algorithms other than MAML-IL
         train_demos = []
         for task_idx in train_set: # no need to shuffle the keys of the train set
-            train_demos.extend(train_set[task_idx]['demos'])
-            if len(train_demos) >= n_traj:
-                break
+            train_demos.extend(train_set[task_idx]['demos'][:traj_per_task])
+            # if len(train_demos) >= n_traj:
+            #     break
         random.shuffle(train_demos) # the sort of the trajectories should not be correlated with the task variable
         test_contexs = []
         for task_idx in test_set:
@@ -89,10 +96,11 @@ def get_demo(train_path, test_path, n_traj, task_specific=False):
     train_demos = {}
     cur_traj = 0
     for task_idx in train_set:
-        train_demos[task_idx] = train_set[task_idx]
-        cur_traj += len(train_set[task_idx]['demos'])
-        if cur_traj >= n_traj:
-            break
+        train_demos[task_idx] = {'context': train_set[task_idx]['context'], 'demos': train_set[task_idx]['demos'][:traj_per_task]}
+        # train_demos[task_idx] = train_set[task_idx]
+        # cur_traj += len(train_set[task_idx]['demos'])
+        # if cur_traj >= n_traj:
+        #     break
 
     return train_demos, test_set
 

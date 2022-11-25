@@ -42,9 +42,10 @@ class PEMIRL_AIRL(torch.nn.Module):
         log_sa = log_sa.detach().clone()
         f = self.discriminator.get_unnormed_d(s, a) # (N, 1)
         exp_f = torch.exp(f)
-        # d = (exp_f / (exp_f + 1.0)).detach().clone()
-        d = (exp_f / (exp_f + torch.exp(log_sa))).detach().clone() # (N, 1)
-        reward = torch.log(d + 1e-8) # corresponding to the PEMIRL paper
+        d = (exp_f / (exp_f + 1.0)).detach().clone()
+        # d = (exp_f / (exp_f + torch.exp(log_sa))).detach().clone() # (N, 1)
+        # reward = torch.log(d + 1e-8) # corresponding to the PEMIRL paper
+        reward = d
         # print("here: ", reward)
 
         return reward
@@ -120,7 +121,8 @@ class PEMIRL_AIRL(torch.nn.Module):
                     log_sa_b = log_sa_b.detach().clone()
                     exp_f_b = torch.exp(f_b)
 
-                    d_b = exp_f_b / (exp_f_b + torch.exp(log_sa_b)) #  a prob between 0. to 1.
+                    # d_b = exp_f_b / (exp_f_b + torch.exp(log_sa_b)) #  a prob between 0. to 1.
+                    d_b = exp_f_b / (exp_f_b + 1.0)
                     d_b = torch.clamp(d_b, min=1e-3, max=1 - 1e-3)
                     loss_b = self.criterion(d_b, tp_b)
                     # for the expert data
@@ -128,12 +130,13 @@ class PEMIRL_AIRL(torch.nn.Module):
                     log_sa_e = self.policy.log_prob_action(se_b, ae_b)
                     log_sa_e = log_sa_e.detach().clone()
                     exp_f_e = torch.exp(f_e)
-                    d_e = exp_f_e / (exp_f_e + torch.exp(log_sa_e))
+                    # d_e = exp_f_e / (exp_f_e + torch.exp(log_sa_e))
+                    d_e = exp_f_e / (exp_f_e + 1.0)
                     d_e = torch.clamp(d_e, min=1e-3, max=1 - 1e-3)
                     loss_e = self.criterion(d_e, te_b)
                     loss = loss_b + loss_e
-                    # loss += self.discriminator.gradient_penalty(sp_b, ap_b, lam=10.) #TODO
-                    # loss += self.discriminator.gradient_penalty(se_b, ae_b, lam=10.)
+                    loss += self.discriminator.gradient_penalty(sp_b, ap_b, lam=10.) #TODO
+                    loss += self.discriminator.gradient_penalty(se_b, ae_b, lam=10.)
 
                     self.optim.zero_grad()
                     loss.backward()

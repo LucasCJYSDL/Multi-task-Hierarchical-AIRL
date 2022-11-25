@@ -62,8 +62,10 @@ class MHAOptionAIRL(torch.nn.Module):
         log_sa = self.policy.log_prob_action(s, c, a).detach().clone() # (N, 1)
         sca = torch.exp(log_sc) * torch.exp(log_sa)
         exp_f = torch.exp(f)
-        d = (exp_f / (exp_f + sca)).detach().clone()
+        # d = (exp_f / (exp_f + sca)).detach().clone()
+        d = (exp_f / (exp_f + 1.0)).detach().clone()
         reward = d
+
         # the reward from the MI part
         s_only = s[:, :-self.dim_cnt]
         cnt = s[0:1, -self.dim_cnt:] # (1, cnt_dim)
@@ -180,8 +182,8 @@ class MHAOptionAIRL(torch.nn.Module):
                     log_sc = self.policy.log_prob_option(s_array, c_1array, c_array).detach().clone()
                     log_sa = self.policy.log_prob_action(s_array, c_array, a_array).detach().clone()
                     sca = torch.exp(log_sc) * torch.exp(log_sa)
-                    d = exp_f / (exp_f + sca)
-                    # d = exp_f / (exp_f + 1.0)
+                    # d = exp_f / (exp_f + sca)
+                    d = exp_f / (exp_f + 1.0)
                     loss = self.criterion(d, t_array)
                     # print("before: ", loss)
                     loss += self.discriminator.gradient_penalty(s_array, a_array, c_1array, c_array, lam=10.)

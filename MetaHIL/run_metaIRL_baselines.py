@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import os
+import os, time
 import torch
 import torch.multiprocessing as multiprocessing
 from utils.common_utils import validate, reward_validate, get_dirs, set_seed
 from sampler import Sampler
+from vec_sampler import VecSampler
 from utils.logger import Logger
 from utils.config import ARGConfig, Config
 from default_config import mujoco_config
@@ -24,8 +25,9 @@ def make_il(config: Config, dim_s, dim_a, dim_cnt, cnt_limit):
     return il, ppo
 
 def sample_batch(il, agent, n_sample, demo_sa_array):
-    demo_sa_in = agent.filter_demo(demo_sa_array)
+    # demo_sa_in = agent.filter_demo(demo_sa_array)
     sample_sxar_in = agent.collect(il.policy.state_dict(), n_sample, fixed=False)
+    # print(sample_sxar_in)
     sample_sxar, sample_rsum, sample_rsum_max = il.convert_sample(sample_sxar_in) # replace the real environment reward with the one generated with IL
     #TODO: time-consuming
     # demo_sxar, demo_rsum = il.convert_demo(demo_sa_in)
@@ -76,14 +78,25 @@ def learn(config: Config, msg="default"):
     demo_sa_array = tuple((s[:, :-dim_cnt].to(il.device), a.to(il.device)) for s, a, r in demo)
     assert demo_sa_array[0][0].shape[1] == dim_s - dim_cnt
     # note that we have eliminated the context embedding in the expert demonstrations
-
+    repeat_num = -1
     if config.algo == 'PEMIRL':
         n_sample = config.context_repeat_num * n_sample
-        sampling_agent = Sampler(seed, env, il.policy, is_expert=False, repeat_num=config.context_repeat_num, task_list=test_contexts)
+        repeat_num = config.context_repeat_num
+
+    if config.n_thread == 1:
+        sampling_agent = Sampler(seed, env, il.policy, is_expert=False, repeat_num=repeat_num, task_list=test_contexts)
     else:
-        sampling_agent = Sampler(seed, env, il.policy, is_expert=False, task_list=test_contexts)
+        if repeat_num > 0:
+            assert config.n_thread == repeat_num
+        sampling_agent = VecSampler(seed, env_name, config.n_thread, il.policy,
+                                    is_expert=False, repeat_num=repeat_num, task_list=test_contexts)
+
     # the true task info is not available by setting is_expert as False
+    st = time.time()
     sample_sxar, sample_r, sample_r_max= sample_batch(il, sampling_agent, n_sample, demo_sa_array)
+    et = time.time()
+
+    print("time required: ", et-st)
 
     # v_l, cs_demo = validate(il.policy, [(tr[0], tr[-2]) for tr in demo_sxar])
     info_dict, cs_sample = reward_validate(sampling_agent, il.policy, do_print=True)
@@ -117,16 +130,16 @@ def learn(config: Config, msg="default"):
 
 
 if __name__ == '__main__':
-    multiprocessing.set_start_method('spawn')
+    # multiprocessing.set_start_method('spawn')
 
     arg = ARGConfig()
     arg.add_arg("env_type", "mujoco", "Environment type, can be [mujoco, ...]")
-    arg.add_arg("env_name", "PointCell-v0", "Environment name")
-    arg.add_arg("algo", "PEMIRL", "which algorithm to use, can be [PEMIRL, SMILE, ...]")
+    arg.add_arg("env_name", "HalfCheetahVel-v0", "Environment name") # AntCell-v1
+    arg.add_arg("algo", "SMILE", "which algorithm to use, can be [PEMIRL, SMILE, ...]")
     arg.add_arg("device", "cuda:0", "Computing device")
     arg.add_arg("tag", "default", "Experiment tag")
     arg.add_arg("seed", 0, "Random seed")
-    arg.add_arg("n_traj", 100, "Number of trajectories for demonstration") # should be 1000
+    arg.add_arg("n_traj", 1000, "Number of trajectories for demonstration") # should be 1000
     arg.parser()
 
     if arg.env_type == "mujoco":
@@ -136,11 +149,13 @@ if __name__ == '__main__':
 
     config.update(arg)
     if config.env_name.startswith("Ant") or config.env_name.startswith("Walker"):
+        config.hidden_option = (128, 128)
         config.hidden_policy = (128, 128)
         config.hidden_critic = (128, 128)
 
     elif config.env_name.startswith("Kitchen"):
         # config.n_sample = 512
+        config.hidden_option = (256, 256)
         config.hidden_policy = (256, 256)
         config.hidden_critic = (256, 256)
 

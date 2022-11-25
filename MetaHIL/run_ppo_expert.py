@@ -73,7 +73,7 @@ if __name__ == "__main__":
     arg = ARGConfig()
     arg.add_arg("env_type", "mujoco", "Environment type, can be [mujoco, ...]")
     # [PointCell-v1, AntCell-v1, HalfCheetahVel-v0, WalkerRandParams-v0, KitchenSeqEnv-v[0~6]]
-    arg.add_arg("env_name", "PointCell-v1", "Environment name")
+    arg.add_arg("env_name", "HalfCheetahVel-v0", "Environment name")
     arg.add_arg("algo", "ppo", "Environment type, can be [ppo, option_ppo]")
     arg.add_arg("device", "cuda:0", "Computing device")
     arg.add_arg("tag", "default", "Experiment tag")

@@ -2,8 +2,9 @@ from utils.config import Config
 
 default_config = Config({
     # global program config
-    "n_sample": 4096,
+    "n_sample": 3000,
     "n_epoch": 2000,
+    "n_thread": 1,
     
     # global policy config
     "activation": "relu",
@@ -26,7 +27,7 @@ default_config = Config({
     "gamma": 0.99,
     "gae_tau": 0.95,
     "clip_eps": 0.2,
-    "mini_batch_size": 512, # 256
+    "mini_batch_size": 1024, # 256
     "lambda_entropy_policy": 0., # TODO: fine-tune
     "lambda_entropy_option": 1.e-4, # TODO: probably the most important parameter
 
@@ -76,8 +77,8 @@ default_config = Config({
 
     # MAML-IL
     "dim_bt": 10, #TODO: change with tasks
-    "MAML_policy_hidden_dim": 200, # we use the setting from the HIL implementation
-    "task_batch_size": 15,
+    "MAML_policy_hidden_dim": 64, # we use the setting from the HIL implementation
+    "task_batch_size": 5,
     "num_demos_for_testing": 1, # we expect the evaluation performance will improve with this number
     "meta_update_times_test": 1,
     "inner_train_update_lr": 0.001, # these two learning rates are from their paper

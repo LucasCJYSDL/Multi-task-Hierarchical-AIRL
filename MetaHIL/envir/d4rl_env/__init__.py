@@ -15,7 +15,7 @@ register(
 register(
     id='KitchenMetaEnv-v0',
     entry_point='envir.d4rl_env.my_kitchen_envs:KitchenMultiTask',
-    max_episode_steps=500)
+    max_episode_steps=300)
 
 register(
     id='KitchenSeqEnv-v0',

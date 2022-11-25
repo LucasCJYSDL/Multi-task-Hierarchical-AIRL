@@ -13,16 +13,22 @@ from model.maml_learner import MAMLLearner
 def preprocess(data_set, context_dim, env_name):
     # we need to replace the true task info (e.g., goal location) in the expert data with the context
     # since the learned policy will not be provided the true task info
+    num_traj = 0
+    num_trans = 0
     for task_idx in data_set:
         temp_context = torch.tensor(data_set[task_idx]['context'], dtype=torch.float32).unsqueeze(0)
+        temp_context = torch.zeros_like(temp_context)
         temp_traj_list = data_set[task_idx]['demos']
+        num_traj += len(temp_traj_list)
         for traj_idx in range(len(temp_traj_list)):
             s, a, r = temp_traj_list[traj_idx]
             s = s[:, :-context_dim] # eliminate the true task info # TODO: only do this elimination
             context_sup = temp_context.repeat(s.shape[0], 1)
             s = torch.cat([s, context_sup], dim=1)
             temp_traj_list[traj_idx] = (s, a, r)
+            num_trans += int(s.shape[0])
 
+    return float(num_trans)/float(num_traj)
 
 def learn(config: Config, msg="default"):
     ## prepare
@@ -53,8 +59,14 @@ def learn(config: Config, msg="default"):
 
     # the demonstration does contain task labels!!!
     train_set, test_set = get_demo(train_set_name, test_set_name, n_traj=n_traj, task_specific=True)
-    preprocess(train_set, dim_cnt, env_name)
-    preprocess(test_set, dim_cnt, env_name)
+    train_average_horizon = preprocess(train_set, dim_cnt, env_name)
+    test_average_horizon = preprocess(test_set, dim_cnt, env_name)
+    # print(train_set[0], test_set[10])
+    samples_per_update = train_average_horizon * config.task_batch_size * 2
+    plot_factor = float(samples_per_update) / (config.n_sample * 2)
+
+    # print(train_average_horizon, samples_per_update, plot_factor)
+
     train_task_list = list(train_set.keys())
     test_task_list = list(test_set.keys())
     # the evaluation in only on the tasks contained in the test set, which is controlled to be the same as the other algorithms
@@ -85,28 +97,28 @@ def learn(config: Config, msg="default"):
                 test_task_batch.append({'context': test_set[test_task]['context'], 'demos': test_demos})
 
             info_dict = learner.eval(env, test_task_batch)
-            logger.log_test_info(info_dict, i)
+            logger.log_test_info(info_dict, int(i * plot_factor))
             print(f"R: [ {info_dict['r-min']:.02f} ~ {info_dict['r-max']:.02f}, avg: {info_dict['r-avg']:.02f} ], "
                   f"L: [ {info_dict['step-min']} ~ {info_dict['step-max']} ]")
 
-            if (i + 1) % (100) == 0:
+            if (i + 1) % (2000) == 0:
                 torch.save(learner.policy.state_dict(), save_name_f(i))
 
-        logger.log_train("train_loss", loss, i)
+        logger.log_train("train_loss", loss, int(i * plot_factor))
         logger.flush()
 
 
 if __name__ == '__main__':
-    multiprocessing.set_start_method('spawn')
+    # multiprocessing.set_start_method('spawn')
 
     arg = ARGConfig()
     arg.add_arg("env_type", "mujoco", "Environment type, can be [mujoco, ...]")
-    arg.add_arg("env_name", "PointCell-v0", "Environment name")
+    arg.add_arg("env_name", "WalkerRandParams-v0", "Environment name")
     arg.add_arg("algo", "MAML_IL", "which algorithm to use, can be [MAML_IL, ...]")
     arg.add_arg("device", "cuda:0", "Computing device")
     arg.add_arg("tag", "default", "Experiment tag")
     arg.add_arg("seed", 0, "Random seed")
-    arg.add_arg("n_traj", 5000, "Number of trajectories for demonstration") # should be 1000
+    arg.add_arg("n_traj", 1000, "Number of trajectories for demonstration") # should be 1000
     arg.parser()
 
     if arg.env_type == "mujoco":
@@ -116,13 +128,17 @@ if __name__ == '__main__':
 
     config.update(arg)
     if config.env_name.startswith("Ant") or config.env_name.startswith("Walker"):
+        config.hidden_option = (128, 128)
         config.hidden_policy = (128, 128)
         config.hidden_critic = (128, 128)
+        config.MAML_policy_hidden_dim = 128
 
     elif config.env_name.startswith("Kitchen"):
         # config.n_sample = 512
+        config.hidden_option = (256, 256)
         config.hidden_policy = (256, 256)
         config.hidden_critic = (256, 256)
+        config.MAML_policy_hidden_dim = 256
 
     print(f">>>> Training {config.algo} using {config.env_name} environment on {config.device}")
 
