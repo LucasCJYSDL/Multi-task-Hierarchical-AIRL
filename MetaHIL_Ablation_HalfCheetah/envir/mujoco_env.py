@@ -1,5 +1,6 @@
 import os
 import random
+import numpy as np
 
 import torch
 try:
@@ -187,6 +188,7 @@ def get_demo_stat(path=""):
         aver_r = 0.0
         n_traj = 0
         n_tran = 0
+        r_list = []
         for task_idx in samples:
             temp_list = samples[task_idx]['demos']
             for traj in temp_list:
@@ -195,55 +197,56 @@ def get_demo_stat(path=""):
                 aver_r += r.sum()
                 n_traj += 1
                 n_tran += r.shape[0]
+                r_list.append(r.sum())
 
-        print(aver_r/n_traj, n_traj, n_tran)
+        print(aver_r/n_traj, n_traj, n_tran, np.mean(r_list), np.std(r_list))
 
 
 if __name__ == '__main__':
 
     # collect_demo(config=None, n_demo=10000, is_manual=True, env_name='PointCell-v0')
     #
-    import torch.multiprocessing as multiprocessing
-    from utils.config import Config, ARGConfig
-    from default_config import mujoco_config
-
-    multiprocessing.set_start_method('spawn')
-
-    arg = ARGConfig()
-    arg.add_arg("env_type", "mujoco", "Environment type, can be [mujoco, ...]")
-    arg.add_arg("env_name", "KitchenMetaEnv-v0", "Environment name")
-    arg.add_arg("algo", "option_ppo", "Environment type, can be [ppo, option_ppo]")
-    arg.add_arg("device", "cuda:0", "Computing device")
-    arg.add_arg("tag", "default", "Experiment tag")
-    arg.add_arg("seed", 0, "Random seed")
-    arg.parser()
-
-    config = mujoco_config
-    config.update(arg)
-    if config.env_name.startswith("Ant") or config.env_name.startswith("Walker"):
-        config.hidden_policy = (128, 128)
-        config.hidden_critic = (128, 128)
-        print(f"Training this env with larger policy network size :{config.hidden_policy}")
-
-    elif config.env_name.startswith("Kitchen"):
-        # config.n_sample = 512
-        config.hidden_option = (256, 256)
-        config.hidden_policy = (256, 256)
-        config.hidden_critic = (256, 256)
-
-    print(config.algo)
-    config.use_option = True
-    config.use_c_in_discriminator = False  # in fact, there are no discriminators
-    config.use_d_info_gail = False
-    config.use_vae = False
-    config.train_option = True
-    if config.algo == 'ppo':
-        config.use_option = False
-        config.train_option = False
-
-    config.is_airl = True
-    config.use_option_posterior = True
-    config.use_c_in_discriminator = True  # c actually corresponds to the option choice in the paper
+    # import torch.multiprocessing as multiprocessing
+    # from utils.config import Config, ARGConfig
+    # from default_config import mujoco_config
+    #
+    # multiprocessing.set_start_method('spawn')
+    #
+    # arg = ARGConfig()
+    # arg.add_arg("env_type", "mujoco", "Environment type, can be [mujoco, ...]")
+    # arg.add_arg("env_name", "KitchenMetaEnv-v0", "Environment name")
+    # arg.add_arg("algo", "option_ppo", "Environment type, can be [ppo, option_ppo]")
+    # arg.add_arg("device", "cuda:0", "Computing device")
+    # arg.add_arg("tag", "default", "Experiment tag")
+    # arg.add_arg("seed", 0, "Random seed")
+    # arg.parser()
+    #
+    # config = mujoco_config
+    # config.update(arg)
+    # if config.env_name.startswith("Ant") or config.env_name.startswith("Walker"):
+    #     config.hidden_policy = (128, 128)
+    #     config.hidden_critic = (128, 128)
+    #     print(f"Training this env with larger policy network size :{config.hidden_policy}")
+    #
+    # elif config.env_name.startswith("Kitchen"):
+    #     # config.n_sample = 512
+    #     config.hidden_option = (256, 256)
+    #     config.hidden_policy = (256, 256)
+    #     config.hidden_critic = (256, 256)
+    #
+    # print(config.algo)
+    # config.use_option = True
+    # config.use_c_in_discriminator = False  # in fact, there are no discriminators
+    # config.use_d_info_gail = False
+    # config.use_vae = False
+    # config.train_option = True
+    # if config.algo == 'ppo':
+    #     config.use_option = False
+    #     config.train_option = False
+    #
+    # config.is_airl = True
+    # config.use_option_posterior = True
+    # config.use_c_in_discriminator = True  # c actually corresponds to the option choice in the paper
 
     # collect_demo(config, n_task=100, demo_per_task=10, data_type='train', expert_path='../model_saved/MHIL/1399.torch')
     # collect_demo(config, n_task=50, demo_per_task=10, data_type='test', expert_path='./exp_model/PointCell/899.torch')
@@ -251,7 +254,7 @@ if __name__ == '__main__':
     # run_model(config, n_task=100, demo_per_task=10, expert_path='../model_saved/MHIL/1399.torch')
 
     # get_demo_stat('KitchenMetaEnv-v0_sample_train.torch')
-    # get_demo_stat('KitchenMetaEnv-v0_sample_test.torch')
+    get_demo_stat('../data/mujoco/HalfCheetahVel-v0_sample_test.torch')
 
     # train, test = get_demo('PointCell-v0_sample_train.torch', 'PointCell-v0_sample_test.torch', 10, task_specific=True)
     # print(train)

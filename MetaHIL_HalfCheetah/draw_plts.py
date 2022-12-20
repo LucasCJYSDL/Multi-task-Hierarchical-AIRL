@@ -9,7 +9,7 @@ def plot():
     
     # data files
     common_dir = './log_saved'
-    file_dir = {'MHIL': [13227, 13373, 13520, 14923], 'MAML-IL': [15218, 15276, 15331, 15380, 15437],
+    file_dir = {'MH-AIRL': [13227, 13373, 13520, 14923], 'MAML-IL': [15218, 15276, 15331, 15380, 15437],
                 'SMILE': [14131, 14206, 14252, 14339, 14414], 'PEMIRL': [13727, 13800, 13872, 13939, 14009]}
 
     data_frame = pd.DataFrame()
@@ -43,6 +43,7 @@ def plot():
                 cur_value = mov_max_agent.update(temp_value[i])
                 temp_value[i] = cur_value
 
+            convergent_performance = []
             mov_avg_agent = MovAvg()
             for i in range(temp_len):
                 # if 'MAML' in alg:
@@ -58,6 +59,7 @@ def plot():
                 # if temp_step[i] >= 1000: # 1800, 1000
                 #     temp_array.append(cur_value)
                 data_frame = data_frame.append({'algorithm': alg, 'Step': temp_step[i] * scale, 'Reward': cur_value}, ignore_index=True)
+
 
     # expert value: 168.46 for room
     for i in range(temp_len):

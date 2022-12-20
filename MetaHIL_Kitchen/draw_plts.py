@@ -9,7 +9,7 @@ def plot():
     
     # data files
     common_dir = './log_saved'
-    file_dir = {'MHIL': [7278, 22112, 22209, 31648], 'MAML-IL': [3816, 3863, 3912, 3961, 4014],
+    file_dir = {'MH-AIRL': [7278, 22112, 22209, 31648], 'MAML-IL': [3816, 3863, 3912, 3961, 4014],
                 'SMILE': [3385, 3456, 3541, 3596, 23137], 'PEMIRL': [2583, 2833, 2894, 3008, 3120]}
 
     data_frame = pd.DataFrame()

@@ -4,7 +4,7 @@ default_config = Config({
     # global program config
     "n_thread": 5,
     "n_sample": 4096,
-    "n_epoch": 4000,
+    "n_epoch": 2000,
     
     # global policy config
     "activation": "relu",

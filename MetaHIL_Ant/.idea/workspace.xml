@@ -19,11 +19,11 @@
   "keyToString": {
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "last_opened_file_path": "/home/wenqi/Proj_3_MetaHIL/MetaHIL_Walker",
+    "last_opened_file_path": "/home/wenqi/Proj_3_MetaHIL/MetaHIL_HalfCheetah",
     "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
 }]]></component>
-  <component name="RunManager" selected="Python.mujoco_env">
+  <component name="RunManager" selected="Python.draw_plts">
     <configuration name="draw_plts" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="MetaHIL_Ant" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -68,8 +68,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.mujoco_env" />
         <item itemvalue="Python.draw_plts" />
+        <item itemvalue="Python.mujoco_env" />
       </list>
     </recent_temporary>
   </component>
