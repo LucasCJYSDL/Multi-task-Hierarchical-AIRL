@@ -417,12 +417,12 @@ class MHAOptionGAIL(torch.nn.Module):
                 c_1array = torch.cat((cp_1b, ce_1b), dim=0)
                 c_array = torch.cat((cp_b, ce_b), dim=0)
                 t_array = torch.cat((tp_b, te_b), dim=0)
-                for _ in range(3):
+                for _ in range(1):
                     src = self.discriminator.get_unnormed_d(s_array, c_1array, a_array, c_array)
                     loss = F.binary_cross_entropy_with_logits(src, t_array)
                     self.optim.zero_grad()
                     loss.backward()
-                    # clip_grad_norm_(self.discriminator.parameters(), max_norm=10, norm_type=2)
+                    clip_grad_norm_(self.discriminator.parameters(), max_norm=10, norm_type=2)
                     self.optim.step()
 
     def convert_demo(self, demo_sa):
