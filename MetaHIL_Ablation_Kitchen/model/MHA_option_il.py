@@ -150,7 +150,7 @@ class MHAOptionAIRL(torch.nn.Module):
 
                     self.optim.zero_grad()
                     loss.backward()
-                    clip_grad_norm_(self.discriminator.parameters(), max_norm=15, norm_type=2)
+                    clip_grad_norm_(self.discriminator.parameters(), max_norm=10, norm_type=2)
                     self.optim.step()
 
 

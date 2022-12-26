@@ -418,10 +418,9 @@ class MHAOptionGAIL(torch.nn.Module):
                 c_1array = torch.cat((cp_1b, ce_1b), dim=0)
                 c_array = torch.cat((cp_b, ce_b), dim=0)
                 t_array = torch.cat((tp_b, te_b), dim=0)
-                for _ in range(1):
+                for _ in range(5):
                     src = self.discriminator.get_unnormed_d(s_array, c_1array, a_array, c_array)
                     loss = F.binary_cross_entropy_with_logits(src, t_array)
-                    loss += self.discriminator.gradient_penalty(s_array, a_array, c_1array, c_array, lam=10.)
                     self.optim.zero_grad()
                     loss.backward()
                     self.optim.step()

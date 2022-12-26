@@ -162,7 +162,7 @@ if __name__ == "__main__":
 
     arg = ARGConfig()
     arg.add_arg("env_type", "mujoco", "Environment type")
-    arg.add_arg("env_name", "AntCell-v1", "Environment name") # AntCell-v1
+    arg.add_arg("env_name", "KitchenMetaEnv-v0", "Environment name") # AntCell-v1
     arg.add_arg("algo", "DI_gail", "which algorithm to use, can be [gail, option_gail, DI_gail, hier_airl]")
     arg.add_arg("device", "cuda:0", "Computing device")
     arg.add_arg("tag", "default", "Experiment tag")
