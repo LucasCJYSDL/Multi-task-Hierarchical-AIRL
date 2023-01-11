@@ -21,16 +21,10 @@
 ```bash
 # MH-AIRL:
 python run_main.py --env_name XXX --n_traj 1000 --algo meta_hier_airl --seed YYY
-```
-```bash
 # MAML-IL:
 python run_mamlIL_baselines.py --env_name XXX --n_traj 1000 --algo MAML_IL --seed YYY
-```
-```bash
 # PEMIRL:
 python run_metaIRL_baselines.py --env_name XXX --n_traj 1000 --algo PEMIRL --seed YYY
-```
-```bash
 # SMILE
 python run_metaIRL_baselines.py --env_name XXX --n_traj 1000 --algo SMILE --seed YYY
 ```
