@@ -17,16 +17,18 @@
 - The algorithms are evaluated on four tasks: HalfCheetah, Walker, Ant, and Kitchen.
 - To reproduce the comparison result on task 'XXX', you need to first enter the corresponding folder 'MetaHIL_XXX', where 'XXX' can be any of the four listed above.
 - To run the experiment with specific algorithms:
+
 ```bash
-% MH-AIRL:
+# MH-AIRL:
 python run_main.py --env_name XXX --n_traj 1000 --algo meta_hier_airl --seed YYY
-% AML-IL:
+# MAML-IL:
 python run_mamlIL_baselines.py --env_name XXX --n_traj 1000 --algo MAML_IL --seed YYY
-% EMIRL:
+# PEMIRL:
 python run_metaIRL_baselines.py --env_name XXX --n_traj 1000 --algo PEMIRL --seed YYY
-% MILE
+# SMILE
 python run_metaIRL_baselines.py --env_name XXX --n_traj 1000 --algo SMILE --seed YYY
 ```
+
 - 'XXX' can be one of {'HalfCheetahVel-v0', 'WalkerRandParams-v0', 'AntCell-v1', 'KitchenMetaEnv-v0'}, while the random seed 'YYY' can be 0, 1, 2, 3, or 4.
 
 ## Ablation study results
