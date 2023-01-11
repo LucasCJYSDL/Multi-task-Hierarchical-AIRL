@@ -20,13 +20,10 @@
 ```bash
 # MH-AIRL:
 python run_main.py --env_name XXX --n_traj 1000 --algo meta_hier_airl --seed YYY
-
 # MAML-IL:
 python run_mamlIL_baselines.py --env_name XXX --n_traj 1000 --algo MAML_IL --seed YYY
-
 # PEMIRL:
 python run_metaIRL_baselines.py --env_name XXX --n_traj 1000 --algo PEMIRL --seed YYY
-
 # SMILE
 python run_metaIRL_baselines.py --env_name XXX --n_traj 1000 --algo SMILE --seed YYY
 ```
@@ -39,13 +36,10 @@ python run_metaIRL_baselines.py --env_name XXX --n_traj 1000 --algo SMILE --seed
 ```bash
 # MH-GAIL
 python run_other_ablations.py --env_name XXX --n_traj 1000 --algo meta_hier_gail --seed YYY
-
 # Option-GAIL
 python run_hierIL_baselines.py --env_name XXX --n_traj 1000 --algo option_gail --seed YYY
-
 # DI-GAIL
 python run_hierIL_baselines.py --env_name XXX --n_traj 1000 --algo DI_gail --seed YYY
-
 # H-AIRL
 python run_hierIL_baselines.py --env_name XXX --n_traj 1000 --algo hier_airl --seed YYY
 ```
@@ -64,13 +58,10 @@ python run_main.py --algo meta_hier_airl
 ```bash
 # HPPO-init
 python run_main.py --env_name XXX
-
 # HPPO
 python run_ppo.py --algo 'hier_ppo' --env_name XXX
-
 # DAC
 python run_ppo.py --algo 'dac' --env_name XXX
-
 # PPO
 python run_ppo.py --algo 'ppo' --env_name XXX
 ```
