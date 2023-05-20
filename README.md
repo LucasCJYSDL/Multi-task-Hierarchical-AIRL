@@ -1,5 +1,19 @@
 # Multi-task Hierarchical Adversarial Inverse Reinforcement Learning
 
+## Paper Citation:
+Please cite this paper:
+```bash
+@inproceedings{MHAIRL,
+  author       = {Jiayu Chen and
+                  Dipesh Tamboli and
+                  Tian Lan and
+                  Vaneet Aggarwal},
+  title        = {Multi-task Hierarchical Adversarial Inverse Reinforcement Learning},
+  booktitle    = {Proceedings of the 40th International Conference on Machine Learning},
+  year         = {2023}
+}
+```
+
 ## How to config the environments:
 - on Ubuntu 18.04
 - python 3.8
@@ -11,7 +25,6 @@
 - gym 0.19.0
 - seaborn
 - ...
-
 
 ## Comparisons with Meta Imitation Learning baselines
 - The algorithms are evaluated on four tasks: HalfCheetah, Walker, Ant, and Kitchen.
